@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "export": "next export -h"
   },
   "dependencies": {
     "@radix-ui/react-scroll-area": "^1.2.10",
@@ -19,6 +20,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "remark-slug": "^7.0.1",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7"
   },

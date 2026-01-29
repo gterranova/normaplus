@@ -10,7 +10,7 @@ import (
 )
 
 // ToMarkdown converts Akoma Ntoso XML bytes to a well-formatted Markdown string.
-func ToMarkdown(xmlBytes []byte) (string, error) {
+func ToMarkdown(xmlBytes []byte, vigenza string) (string, error) {
 	// HACK: goquery uses an HTML5 parser (net/html) which doesn't support self-closing XML tags.
 	// We expand them to <tag></tag> to prevent sibling content from being swallowed into containers.
 	// Multi-pass expansion handles nested self-closing tags.
@@ -26,9 +26,20 @@ func ToMarkdown(xmlBytes []byte) (string, error) {
 	var sb strings.Builder
 	footnotes := make(map[string]string)
 
+	if vigenza != "" {
+		displayDate := vigenza
+		// Try to reformat YYYY-MM-DD to DD-MM-YYYY
+		parts := strings.Split(vigenza, "-")
+		if len(parts) == 3 {
+			displayDate = fmt.Sprintf("%s-%s-%s", parts[2], parts[1], parts[0])
+		}
+		sb.WriteString(fmt.Sprintf("*Testo in vigore dal: %s*\n\n", displayDate))
+	}
+
 	// 1. Document Title
 	docTitle := strings.TrimSpace(doc.Find("preface docTitle").Text())
 	if docTitle != "" {
+		sb.WriteString("\n\n<span id=\"preamble\"></span>\n\n")
 		sb.WriteString(fmt.Sprintf("# %s\n\n", normalizeWhitespace(docTitle)))
 	}
 
@@ -128,6 +139,11 @@ func processStructuralContainer(s *goquery.Selection, sb *strings.Builder, footn
 		}
 	}
 
+	// Inject Anchor for Deep Linking
+	if eid, exists := s.Attr("eid"); exists && eid != "" {
+		sb.WriteString(fmt.Sprintf(`<span id="%s"></span>`, eid) + "\n\n")
+	}
+
 	// Split complex headings (e.g. "PARTE I ... TITOLO II ...")
 	headers, depthIncrease := parseComplexHeading(fullHeading, level)
 
@@ -136,7 +152,7 @@ func processStructuralContainer(s *goquery.Selection, sb *strings.Builder, footn
 			sb.WriteString(h + "\n\n")
 		}
 	} else {
-		// Standard heading rendering
+		// Standard rendering
 		lvl := level + 1
 		if lvl > 6 {
 			lvl = 6
@@ -156,7 +172,6 @@ func processStructuralContainer(s *goquery.Selection, sb *strings.Builder, footn
 	s.Children().Each(func(_ int, child *goquery.Selection) {
 		childTag := goquery.NodeName(child)
 		if childTag != "num" && childTag != "heading" {
-			// Sub-elements are one level deeper, but childLevel already accounted for complex splits
 			processBodyNode(child, sb, footnotes, childLevel-1)
 		}
 	})
@@ -221,6 +236,11 @@ func processArticle(s *goquery.Selection, sb *strings.Builder, footnotes *map[st
 			heading = possibleHeading
 			headingInParagraph = true
 		}
+	}
+
+	// Inject Anchor
+	if eid, exists := s.Attr("eid"); exists && eid != "" {
+		sb.WriteString(fmt.Sprintf(`<span id="%s"></span>`, eid) + "\n\n")
 	}
 
 	// Use level passed from parent. Ensure it's deep enough
@@ -415,11 +435,19 @@ func processQuotedStructure(qs *goquery.Selection, sb *strings.Builder, footnote
 }
 
 func processAttachment(att *goquery.Selection, sb *strings.Builder, footnotes *map[string]string) {
+
 	// check if the attachment has a name attribute
 	doc := att.Find("doc").First()
 	heading, exists := doc.Attr("name")
 	if !exists {
 		heading = "Allegato"
+	} else {
+		// convert heading to anchor
+		eid := strings.ReplaceAll(heading, " ", "-")
+		eid = strings.ToLower(eid)
+
+		// Inject Anchor
+		sb.WriteString(fmt.Sprintf(`<span id="%s"></span>`, eid) + "\n\n")
 	}
 
 	sb.WriteString(fmt.Sprintf("### %s\n\n", heading))

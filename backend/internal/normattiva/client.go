@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -120,26 +122,64 @@ func (c *Client) Search(query string) ([]DocumentMetadata, error) {
 }
 
 // FetchXML fetches the Akoma Ntoso XML for a given document.
-func (c *Client) FetchXML(codiceRedazionale, date string) ([]byte, error) {
+func (c *Client) FetchXML(codiceRedazionale, date, vigenza string) ([]byte, error) {
+	// Default vigenza to today if empty
+	if vigenza == "" {
+		vigenza = time.Now().Format("2006-01-02")
+	}
+
+	// Snap vigenza to publication date if it's earlier
+	// Publication date is 'date' (YYYY-MM-DD or YYYYMMDD)
+	if pubDate, err := time.Parse("2006-01-02", date); err == nil {
+		if vigDate, err := time.Parse("2006-01-02", vigenza); err == nil {
+			if vigDate.Before(pubDate) {
+				fmt.Printf("DEBUG: Snapping vigenza %s to publication date %s\n", vigenza, date)
+				vigenza = date
+			}
+		}
+	}
+
+	// Normalize dates to YYYYMMDD
+	dateParam := strings.ReplaceAll(date, "-", "")
+	vigenzaParam := strings.ReplaceAll(vigenza, "-", "")
+
+	// Cache Logic
+	cacheDir := "cache"
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		fmt.Println("Warning: failed to create cache dir:", err)
+	} else {
+		filename := fmt.Sprintf("%s_%s_%s.xml", dateParam, codiceRedazionale, vigenzaParam)
+		cachePath := filepath.Join(cacheDir, filename)
+
+		info, err := os.Stat(cachePath)
+		if err == nil {
+			// Check TTL (1 day)
+			if time.Since(info.ModTime()) < 24*time.Hour {
+				data, err := os.ReadFile(cachePath)
+				if err == nil {
+					fmt.Println("Cache hit for", filename)
+					return data, nil
+				}
+			}
+		}
+	}
+
 	if err := c.ensureCookies(); err != nil {
 		return nil, fmt.Errorf("failed to init cookies: %w", err)
 	}
 
-	// date comes as YYYY-MM-DD from Search, but FetchXML needs YYYYMMDD
-	dateParam := strings.ReplaceAll(date, "-", "")
-
 	// Endpoint: /do/atto/caricaAKN?dataGU=...&codiceRedaz=...&dataVigenza=...
-	// Let's use today's date for vigency to get the current text.
-	vigenza := time.Now().Format("20060102")
 
 	// 1. Visit Detail Page first (to set session state)
-	// The detail URL structure from search result:
-	// /atto/caricaDettaglioAtto?atto.dataPubblicazioneGazzetta=YYYY-MM-DD&atto.codiceRedazionale=...
 	detailParams := url.Values{}
 	detailParams.Set("atto.dataPubblicazioneGazzetta", date) // "1947-12-27"
 	detailParams.Set("atto.codiceRedazionale", codiceRedazionale)
+	if vigenza != "" {
+		detailParams.Set("atto.dataVigenza", vigenza)
+	}
 	detailURL := fmt.Sprintf("%s/atto/caricaDettaglioAtto?%s", baseURL, detailParams.Encode())
 
+	fmt.Printf("DEBUG: Visiting detail page: %s\n", detailURL)
 	detailReq, err := http.NewRequest("GET", detailURL, nil)
 	if err != nil {
 		return nil, err
@@ -151,14 +191,16 @@ func (c *Client) FetchXML(codiceRedazionale, date string) ([]byte, error) {
 		return nil, err
 	}
 	detailResp.Body.Close()
+	fmt.Printf("DEBUG: Detail page Status: %s\n", detailResp.Status)
 
 	// 2. Fetch XML
 	params := url.Values{}
 	params.Set("dataGU", dateParam)
 	params.Set("codiceRedaz", codiceRedazionale)
-	params.Set("dataVigenza", vigenza)
+	params.Set("dataVigenza", vigenzaParam)
 
 	xmlURL := fmt.Sprintf("%s/do/atto/caricaAKN?%s", baseURL, params.Encode())
+	fmt.Printf("DEBUG: Fetching XML: %s\n", xmlURL)
 
 	req, err := http.NewRequest("GET", xmlURL, nil)
 	if err != nil {
@@ -174,12 +216,37 @@ func (c *Client) FetchXML(codiceRedazionale, date string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
+	fmt.Printf("DEBUG: XML Fetch Status: %s\n", resp.Status)
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch XML: %s", resp.Status)
 	}
 
 	// Read body
-	return io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validation: Check if it's actually XML (Normattiva sometimes returns HTML error pages with 200 OK)
+	bodyStr := strings.TrimSpace(string(data))
+	if !strings.HasPrefix(bodyStr, "<?xml") && strings.HasPrefix(bodyStr, "<!DOCTYPE") {
+		return nil, fmt.Errorf("normattiva session error: returned HTML instead of XML. Try refreshing the page.")
+	}
+
+	if len(data) < 100 {
+		return nil, fmt.Errorf("normattiva error: empty or too small response")
+	}
+
+	// Save to cache
+	cacheDir = "cache" // ensure var is available
+	filename := fmt.Sprintf("%s_%s_%s.xml", dateParam, codiceRedazionale, vigenzaParam)
+	cachePath := filepath.Join(cacheDir, filename)
+	if err := os.WriteFile(cachePath, data, 0644); err != nil {
+		fmt.Println("Warning: failed to write cache:", err)
+	}
+
+	return data, nil
 }
 
 // ResolveURN resolves a Normattiva URN to its Codice Redazionale and Date.

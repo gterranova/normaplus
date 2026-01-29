@@ -14,7 +14,7 @@ func TestToMarkdown(t *testing.T) {
 		t.Skipf("sample.xml not found at %s, skipping integration test", path)
 	}
 
-	md, err := ToMarkdown(xmlBytes)
+	md, err := ToMarkdown(xmlBytes, "")
 	if err != nil {
 		t.Fatalf("ToMarkdown failed: %v", err)
 	}

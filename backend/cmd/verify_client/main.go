@@ -27,7 +27,7 @@ func main() {
 	fmt.Printf("First result: %+v\n", first)
 
 	fmt.Println("Fetching XML for first result...")
-	xmlBytes, err := client.FetchXML(first.CodiceRedazionale, first.DataPubblicazioneGazzetta)
+	xmlBytes, err := client.FetchXML(first.CodiceRedazionale, first.DataPubblicazioneGazzetta, "")
 	if err != nil {
 		log.Fatalf("FetchXML failed: %v", err)
 	}

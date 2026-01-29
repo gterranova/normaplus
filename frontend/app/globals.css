@@ -24,6 +24,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    --highlight-flash: 254, 240, 138;
   }
 
   .dark {
@@ -46,6 +47,7 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+    --highlight-flash: 146, 64, 14;
   }
 }
 
@@ -56,5 +58,30 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  @keyframes highlight-fade {
+    0% {
+      background-color: rgba(var(--highlight-flash), 0.8);
+    }
+
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  .animate-highlight {
+    animation: highlight-fade 2.5s ease-out forwards !important;
+  }
+
+  .panel-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Fix for ReactMarkdown injected divs that default to 'display: table' */
+  [data-radix-scroll-area-viewport] div:first-child {
+    display: block !important;
   }
 }
