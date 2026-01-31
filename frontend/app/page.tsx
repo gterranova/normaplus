@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import SearchBar from '@/components/SearchBar';
-import Sidebar, { Document as HistoryDef } from '@/components/Sidebar';
+import LeftSidebar, { Document as HistoryDef } from '@/components/LeftSidebar';
 import DocumentView from '@/components/DocumentView';
-import DocumentSidebar from '@/components/DocumentSidebar';
-import { Scale, XCircle, LogOut, Sun, Moon, Settings } from "lucide-react"
+import RightSidebar from '@/components/RightSidebar';
+import { Scale, XCircle, LogOut, Sun, Moon, User, Settings } from "lucide-react"
 import { useUser } from '@/components/UserProvider';
 
 export default function Home() {
@@ -224,13 +224,6 @@ export default function Home() {
     }
   };
 
-  const handlePinHistory = (index: number, e: any) => {
-    e.stopPropagation();
-    const newHistory = [...history];
-    newHistory[index].isPinned = !newHistory[index].isPinned;
-    setHistory(newHistory);
-  };
-
   const handleNavigate = async (urn: string) => {
     setLoading(true);
     setError('');
@@ -285,12 +278,10 @@ export default function Home() {
       <header className="shrink-0 border-b bg-card/80 backdrop-blur-md z-50 shadow-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-primary/10 p-2 rounded-lg border border-primary/20">
-              <Scale className="h-5 w-5 text-primary" />
-            </div>
+            <Scale className="h-6 w-6 text-primary text-[#1a1a1a] dark:text-[#e0e0e0]" />
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground leading-none">Normattiva Search</h1>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-0.5">Italian Legal Corpus</p>
+              <h1 className="text-xl font-bold tracking-tight text-foreground leading-none text-[#1a1a1a] dark:text-[#e0e0e0]">normattiva<span className='text-amber-600 dark:text-amber-400'>+</span></h1>
+              {/*<p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-0.5">Legal Search Engine</p>*/}
             </div>
           </div>
           <div className="flex-1 max-w-xl mx-8 hidden md:block">
@@ -298,9 +289,9 @@ export default function Home() {
           </div>
           <div className="flex items-center space-x-3">
             {user && (
-              <div className="flex items-center space-x-2 bg-accent/30 px-4 py-1.5 rounded-full border border-border/50">
-                <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: user.color }}></span>
-                <span className="text-foreground font-medium">{user.name}</span>
+              <div className="flex items-center space-x-2 bg-accent/30 px-4 py-1.5 rounded-md border">
+                <User className="h-4 w-4 text-primary" style={{ color: user.color }} />
+                <span className="text-foreground text-sm text-muted-foreground font-medium">{user.name}</span>
               </div>
             )}
             <div className="flex items-center bg-muted/30 rounded-lg p-0.5 border">
@@ -345,7 +336,7 @@ export default function Home() {
         <div className="flex h-full gap-6">
           {/* Left Sidebar: Search & History */}
           <div className="h-full shrink-0 overflow-hidden">
-            <Sidebar
+            <LeftSidebar
               results={results}
               history={history}
               bookmarks={bookmarks}
@@ -383,7 +374,7 @@ export default function Home() {
           {/* Right Sidebar: Unified TOC & Annotations */}
           {selectedDocument && (
             <div className="hidden lg:flex h-full shrink-0">
-              <DocumentSidebar
+              <RightSidebar
                 toc={toc}
                 annotations={annotations}
                 onSelectSection={handleSelectSection}

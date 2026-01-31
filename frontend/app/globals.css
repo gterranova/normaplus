@@ -81,7 +81,7 @@
   }
 
   /* Fix for ReactMarkdown injected divs that default to 'display: table' */
-  [data-radix-scroll-area-viewport] div:first-child {
+  [data-radix-scroll-area-viewport] div[style*="display: table"] {
     display: block !important;
   }
 }

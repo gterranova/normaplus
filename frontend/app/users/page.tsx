@@ -72,7 +72,7 @@ export default function UsersPage() {
                                     className="group flex flex-col items-center space-y-4 w-32 focus:outline-none"
                                 >
                                     <div
-                                        className="w-32 h-32 rounded-md bg-card border-2 border-transparent group-hover:border-primary group-hover:bg-accent/10 flex items-center justify-center transition-all overflow-hidden relative"
+                                        className="w-32 h-32 rounded-full bg-card border-2 border-transparent group-hover:border-primary group-hover:bg-accent/10 flex items-center justify-center transition-all overflow-hidden relative"
                                         style={{ borderColor: user.color }}
                                     >
                                         <div className="w-full h-full absolute inset-0 opacity-20" style={{ backgroundColor: user.color }} />
@@ -88,7 +88,7 @@ export default function UsersPage() {
                                 onClick={() => setIsCreating(true)}
                                 className="group flex flex-col items-center space-y-4 w-32 focus:outline-none"
                             >
-                                <div className="w-32 h-32 rounded-md bg-card border-2 border-dashed border-muted-foreground/30 group-hover:border-foreground/50 group-hover:bg-accent/10 flex items-center justify-center transition-all">
+                                <div className="w-32 h-32 rounded-full bg-card border-2 border-dashed border-muted-foreground/30 group-hover:border-foreground/50 group-hover:bg-accent/10 flex items-center justify-center transition-all">
                                     <UserPlus className="w-12 h-12 text-muted-foreground group-hover:text-foreground" />
                                 </div>
                                 <span className="text-lg text-muted-foreground group-hover:text-foreground transition-colors font-medium">

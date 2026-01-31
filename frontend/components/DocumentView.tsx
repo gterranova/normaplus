@@ -274,7 +274,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
     // Scroll to Fragment/Anchor
     useEffect(() => {
         if (docData?.urnFragment) {
-            console.log("DEBUG: Scrolling to", docData.urnFragment);
+            //console.log("DEBUG: Scrolling to", docData.urnFragment);
             // Use a small timeout or requestAnimationFrame to ensure ReactMarkdown has finished rendering
             const timer = setTimeout(() => {
                 const el = document.getElementById(docData.urnFragment);
@@ -304,7 +304,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                     }, 2000);
 
                 } else {
-                    console.warn("DEBUG: Element not found for scrolling", docData.urnFragment);
+                    //console.warn("DEBUG: Element not found for scrolling", docData.urnFragment);
                 }
             }, 100);
             return () => clearTimeout(timer);
@@ -322,7 +322,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                 (e.target as HTMLElement).closest('.ann-icon');
 
             if (isClickInside) {
-                console.log("DEBUG: Mouseup inside editor/icon, not clearing.");
+                //console.log("DEBUG: Mouseup inside editor/icon, not clearing.");
                 return;
             }
 
@@ -366,8 +366,6 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                     if (firstAnchor) locationId = firstAnchor.id;
                 }
 
-                console.log("DEBUG: Selection captured", { text: sel.toString().trim(), locationId, offset: range.startOffset });
-
                 if (scrollRef.current && scrollRef.current.contains(sel.anchorNode)) {
                     // Context Fingerprinting: Capture text before and after utilizing the actual Range
                     const preRange = range.cloneRange();
@@ -380,7 +378,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                     postRange.setStart(range.endContainer, range.endOffset);
                     const suffix = postRange.toString().slice(0, 60);
 
-                    console.log("DEBUG: Context Captured", { prefix, selection: sel.toString(), suffix });
+                    //console.log("DEBUG: Context Captured", { prefix, selection: sel.toString(), suffix });
 
                     setSelection({
                         x: rect.left + rect.width / 2,
@@ -402,7 +400,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
 
     const handleSaveAnnotation = async (comment: string) => {
         if (!user || !selection || !comment.trim()) return;
-        console.log("DEBUG: Saving annotation", { selection, comment });
+        //console.log("DEBUG: Saving annotation", { selection, comment });
         try {
             const method = selection.existingId ? 'PUT' : 'POST';
             const body = selection.existingId
@@ -424,17 +422,17 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                 body: JSON.stringify(body)
             });
             if (res.ok) {
-                console.log("DEBUG: Save successful");
+                //console.log("DEBUG: Save successful");
                 onAnnotationAction();
                 setSelection(null);
                 window.getSelection()?.removeAllRanges();
             } else {
                 const errText = await res.text();
-                console.error("DEBUG: Save failed", res.status, errText);
+                //console.error("DEBUG: Save failed", res.status, errText);
                 alert(`Failed to save note: ${errText}`);
             }
         } catch (e) {
-            console.error("DEBUG: Save error", e);
+            //console.error("DEBUG: Save error", e);
             alert("Error connecting to server");
         }
     };
@@ -470,7 +468,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
         if (ann) {
             const el = document.querySelector(`mark[data-id="${id}"]`);
             const rect = el?.getBoundingClientRect();
-            console.log("DEBUG: Annotation clicked", { id, ann, rect });
+            //console.log("DEBUG: Annotation clicked", { id, ann, rect });
             setSelection({
                 x: rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
                 y: rect ? rect.top - 10 : window.innerHeight / 2,
@@ -688,7 +686,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                     {docData?.title || 'Document'}
                 </h2>
             </div>
-            <div className="flex justify-end items-center mb-4 px-2 shrink-0 h-10 space-x-3">
+            <div className="flex justify-center items-center mb-4 px-2 shrink-0 h-10 space-x-3">
                 <div className="flex items-center bg-muted/30 rounded-lg p-1 border border-border/50">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold px-2 border-r border-border/50 mr-1">Export</span>
                     <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`http://localhost:8080/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=pdf`)}>PDF</Button>
@@ -696,14 +694,16 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                     <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`http://localhost:8080/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=md`)}>MD</Button>
                 </div>
                 <div className="bg-muted/50 p-1 rounded-lg flex space-x-2 border items-center">
-                    <div className="flex items-center px-2 space-x-2 border-r border-border/50">
+                    <div className="flex items-center px-2 space-x-2">
                         <span className="text-[10px] text-muted-foreground uppercase font-medium">Vigenza</span>
-                        <input type="date" className="bg-transparent text-xs border-none focus:ring-0 p-0 h-6 w-24 font-mono text-muted-foreground focus:text-foreground" value={vigenza} onChange={(e) => setVigenza(e.target.value)} />
+                        <input type="date" className="bg-transparent text-xs border-none focus:ring-0 p-0 h-6 w-26 font-mono text-muted-foreground focus:text-foreground" value={vigenza} onChange={(e) => setVigenza(e.target.value)} />
                     </div>
-                    <Button variant={format === 'markdown' ? 'secondary' : 'ghost'} size="sm" className="h-7 text-xs px-3 shadow-none" onClick={() => setFormat('markdown')}>
+                </div>
+                <div className="bg-muted/50 p-1 rounded-lg flex space-x-2 border items-center">
+                    <Button variant={format === 'markdown' ? 'secondary' : 'ghost'} size="sm" className="h-6 text-xs px-3 shadow-none" onClick={() => setFormat('markdown')}>
                         <Eye className="mr-2 h-3.5 w-3.5" /> Reader
                     </Button>
-                    <Button variant={format === 'xml' ? 'secondary' : 'ghost'} size="sm" className="h-7 text-xs px-3 shadow-none" onClick={() => setFormat('xml')}>
+                    <Button variant={format === 'xml' ? 'secondary' : 'ghost'} size="sm" className="h-6 text-xs px-3 shadow-none" onClick={() => setFormat('xml')}>
                         <FileCode className="mr-2 h-3.5 w-3.5" /> XML
                     </Button>
                 </div>
