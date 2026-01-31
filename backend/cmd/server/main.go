@@ -7,6 +7,7 @@ import (
 
 	"github.com/gterranova/normattiva-search/internal/ai"
 	"github.com/gterranova/normattiva-search/internal/api"
+	"github.com/gterranova/normattiva-search/internal/assets"
 	"github.com/gterranova/normattiva-search/internal/export"
 	"github.com/gterranova/normattiva-search/internal/normattiva"
 	"github.com/gterranova/normattiva-search/internal/store"
@@ -56,6 +57,36 @@ func main() {
 	http.HandleFunc("/api/annotations", corsMiddleware(handler.HandleAnnotations))
 	http.HandleFunc("/api/ai/generate", corsMiddleware(handler.HandleAIGenerate))
 	http.HandleFunc("/api/export", corsMiddleware(handler.HandleExport))
+
+	// Serve static files from the embedded filesystem
+	staticFS := assets.GetFileSystem()
+	fileServer := http.FileServer(staticFS)
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// API routes are handled by specific handlers due to longer prefixes.
+		// This handler catches everything else.
+
+		// For the root path, serve index.html
+		if r.URL.Path == "/" || r.URL.Path == "" {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// Check if the file exists in the static FS
+		// We need to strip the leading slash for the FS
+		filePath := r.URL.Path[1:]
+		f, err := staticFS.Open(filePath)
+		if err == nil {
+			f.Close()
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// If file doesn't exist, it might be an SPA route
+		// Fallback to index.html
+		r.URL.Path = "/"
+		fileServer.ServeHTTP(w, r)
+	})
 
 	port := "8080"
 	log.Printf("Server listening on port %s", port)
