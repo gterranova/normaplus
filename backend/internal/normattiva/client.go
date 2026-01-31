@@ -121,7 +121,7 @@ func (c *Client) Search(query string) ([]DocumentMetadata, error) {
 	return results, nil
 }
 
-// FetchXML fetches the Akoma Ntoso XML for a given document.
+// FetchXML fetches the XML for a given document.
 func (c *Client) FetchXML(codiceRedazionale, date, vigenza string) ([]byte, error) {
 	// Default vigenza to today if empty
 	if vigenza == "" {
@@ -190,8 +190,55 @@ func (c *Client) FetchXML(codiceRedazionale, date, vigenza string) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	detailResp.Body.Close()
-	fmt.Printf("DEBUG: Detail page Status: %s\n", detailResp.Status)
+	defer detailResp.Body.Close()
+
+	if detailResp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("normattiva error: %s", detailResp.Status)
+	}
+
+	// Read response
+	detailData, err := io.ReadAll(detailResp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var data []byte
+
+	if strings.Contains(string(detailData), "/do/atto/caricaAKN") {
+		data, err = c.FetchAKNXML(codiceRedazionale, date, vigenza)
+	} else {
+		data, err = c.FetchPlainXML(codiceRedazionale, date, vigenza)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Save to cache
+	cacheDir = "cache" // ensure var is available
+	filename := fmt.Sprintf("%s_%s_%s.xml", dateParam, codiceRedazionale, vigenzaParam)
+	cachePath := filepath.Join(cacheDir, filename)
+	if err := os.WriteFile(cachePath, data, 0644); err != nil {
+		fmt.Println("Warning: failed to write cache:", err)
+	}
+
+	return data, nil
+}
+
+// FetchAKNXML fetches the Akoma Ntoso XML for a given document.
+func (c *Client) FetchAKNXML(codiceRedazionale, date, vigenza string) ([]byte, error) {
+
+	// Normalize dates to YYYYMMDD
+	dateParam := strings.ReplaceAll(date, "-", "")
+	vigenzaParam := strings.ReplaceAll(vigenza, "-", "")
+
+	detailParams := url.Values{}
+	detailParams.Set("atto.dataPubblicazioneGazzetta", date) // "1947-12-27"
+	detailParams.Set("atto.codiceRedazionale", codiceRedazionale)
+	if vigenza != "" {
+		detailParams.Set("atto.dataVigenza", vigenza)
+	}
+	detailURL := fmt.Sprintf("%s/atto/caricaDettaglioAtto?%s", baseURL, detailParams.Encode())
 
 	// 2. Fetch XML
 	params := url.Values{}
@@ -231,19 +278,14 @@ func (c *Client) FetchXML(codiceRedazionale, date, vigenza string) ([]byte, erro
 	// Validation: Check if it's actually XML (Normattiva sometimes returns HTML error pages with 200 OK)
 	bodyStr := strings.TrimSpace(string(data))
 	if !strings.HasPrefix(bodyStr, "<?xml") && strings.HasPrefix(bodyStr, "<!DOCTYPE") {
-		return nil, fmt.Errorf("normattiva session error: returned HTML instead of XML. Try refreshing the page.")
+		data, err = c.FetchPlainXML(codiceRedazionale, date, vigenza)
+		if err != nil {
+			return nil, fmt.Errorf("normattiva session error: returned HTML instead of XML. Try refreshing the page.")
+		}
 	}
 
 	if len(data) < 100 {
 		return nil, fmt.Errorf("normattiva error: empty or too small response")
-	}
-
-	// Save to cache
-	cacheDir = "cache" // ensure var is available
-	filename := fmt.Sprintf("%s_%s_%s.xml", dateParam, codiceRedazionale, vigenzaParam)
-	cachePath := filepath.Join(cacheDir, filename)
-	if err := os.WriteFile(cachePath, data, 0644); err != nil {
-		fmt.Println("Warning: failed to write cache:", err)
 	}
 
 	return data, nil
