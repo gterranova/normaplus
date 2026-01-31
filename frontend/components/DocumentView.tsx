@@ -264,12 +264,12 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                 const visible = entries.find(e => e.isIntersecting);
                 if (visible) onActiveSectionChange(visible.target.id);
             },
-            { rootMargin: '-10% 0% -80% 0%', threshold: 0 }
+            { threshold: 0, root: scrollRef.current }
         );
         const anchors = document.querySelectorAll('span[id]');
         anchors.forEach(a => observer.observe(a));
         return () => observer.disconnect();
-    }, [content, onActiveSectionChange, format]);
+    }, [content, onActiveSectionChange, format, scrollRef]);
 
     // Scroll to Fragment/Anchor
     useEffect(() => {
@@ -295,7 +295,6 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                         paragraph = paragraph.nextElementSibling as HTMLElement;
                         if (!paragraph || paragraph.tagName !== 'P') break;
                     }
-                    console.log(elArray)
 
                     setTimeout(() => {
                         elArray.forEach(el => {
