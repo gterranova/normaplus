@@ -63,10 +63,11 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	vigenza := query.Get("vigenza")
 	urn := query.Get("urn")
 	format := query.Get("format")
+	title := ""
 
 	if urn != "" {
 		var err error
-		id, date, err = h.client.ResolveURN(urn)
+		title, id, date, err = h.client.ResolveURN(urn)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to resolve URN: %v", err), http.StatusNotFound)
 			return
@@ -89,7 +90,11 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Document-Vigenza", vigenza)
 
 	// Extract and set Title
-	if title, err := converter.ExtractTitle(xmlContent); err == nil && title != "" {
+	if title == "" {
+		title, _ = converter.ExtractTitle(xmlContent)
+	}
+
+	if title != "" {
 		w.Header().Set("X-Document-Title", title)
 	}
 

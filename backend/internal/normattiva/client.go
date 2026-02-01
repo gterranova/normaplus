@@ -293,7 +293,7 @@ func (c *Client) FetchAKNXML(codiceRedazionale, date, vigenza string) ([]byte, e
 
 // ResolveURN resolves a Normattiva URN to its Codice Redazionale and Date.
 // Checks if the response contains a link to the detail page (since Normattiva often returns a list/search result for URNs).
-func (c *Client) ResolveURN(urn string) (string, string, error) {
+func (c *Client) ResolveURN(urn string) (string, string, string, error) {
 	targetURL := fmt.Sprintf("%s/uri-res/N2Ls?%s", baseURL, urn)
 	if strings.Contains(urn, "://") {
 		targetURL = urn
@@ -301,20 +301,20 @@ func (c *Client) ResolveURN(urn string) (string, string, error) {
 
 	req, err := http.NewRequest("GET", targetURL, nil)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	defer resp.Body.Close()
 
 	// Parse HTML to find the link
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to parse URN response: %w", err)
+		return "", "", "", fmt.Errorf("failed to parse URN response: %w", err)
 	}
 
 	// Look for the first result link
@@ -329,8 +329,12 @@ func (c *Client) ResolveURN(urn string) (string, string, error) {
 		return true
 	})
 
+	title := doc.Find("title").Text()
+	title = strings.TrimSuffix(title, " - Normattiva")
+	title = strings.TrimSpace(title)
+
 	if foundHref == "" {
-		return "", "", fmt.Errorf("could not resolve URN: no matching document found in %s", targetURL)
+		return "", "", "", fmt.Errorf("could not resolve URN: no matching document found in %s", targetURL)
 	}
 
 	// Make it absolute if needed (though we just need params)
@@ -340,15 +344,15 @@ func (c *Client) ResolveURN(urn string) (string, string, error) {
 
 	parsedURL, err := url.Parse(foundHref)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	code := parsedURL.Query().Get("atto.codiceRedazionale")
 	date := parsedURL.Query().Get("atto.dataPubblicazioneGazzetta")
 
 	if code == "" {
-		return "", "", fmt.Errorf("could not extract ID from resolved URL: %s", foundHref)
+		return "", "", "", fmt.Errorf("could not extract ID from resolved URL: %s", foundHref)
 	}
 
-	return code, date, nil
+	return title, code, date, nil
 }
