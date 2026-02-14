@@ -9,8 +9,8 @@ import (
 	"github.com/gterranova/normattiva-search/internal/api"
 	"github.com/gterranova/normattiva-search/internal/assets"
 	"github.com/gterranova/normattiva-search/internal/export"
-	"github.com/gterranova/normattiva-search/internal/normattiva"
 	"github.com/gterranova/normattiva-search/internal/store"
+	"github.com/gterranova/normattiva-search/normattiva"
 )
 
 // corsMiddleware adds CORS headers to allow frontend access
@@ -89,7 +89,7 @@ func main() {
 	})
 
 	port := "8080"
-	log.Printf("Server listening on port %s", port)
+	log.Printf("Server running on http://localhost:%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)
 	}

@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/gterranova/normattiva-search/internal/normattiva"
+	"github.com/gterranova/normattiva-search/normattiva"
 )
 
 func main() {

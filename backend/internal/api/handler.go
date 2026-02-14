@@ -7,10 +7,10 @@ import (
 	"strconv"
 
 	"github.com/gterranova/normattiva-search/internal/ai"
-	"github.com/gterranova/normattiva-search/internal/converter"
 	"github.com/gterranova/normattiva-search/internal/export"
-	"github.com/gterranova/normattiva-search/internal/normattiva"
 	"github.com/gterranova/normattiva-search/internal/store"
+	"github.com/gterranova/normattiva-search/normattiva"
+	"github.com/gterranova/normattiva-search/normattiva/document"
 )
 
 type Handler struct {
@@ -63,54 +63,54 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	vigenza := query.Get("vigenza")
 	urn := query.Get("urn")
 	format := query.Get("format")
-	title := ""
+	name := ""
+
+	var doc *document.Document
+	var err error
 
 	if urn != "" {
-		var err error
-		title, id, date, err = h.client.ResolveURN(urn)
+		doc, err = h.client.FetchByURN(urn)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to resolve URN: %v", err), http.StatusNotFound)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	}
-
-	if id == "" || date == "" {
-		http.Error(w, "Missing 'id' and 'date' or 'urn' parameters", http.StatusBadRequest)
+	} else if id != "" {
+		doc, err = h.client.Fetch(id, name, date, vigenza)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		http.Error(w, "Missing/wrong 'id' or 'urn' parameters", http.StatusBadRequest)
 		return
 	}
 
-	xmlContent, err := h.client.FetchXML(id, date, vigenza)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	w.Header().Set("X-Document-Id", doc.CodiceRedazionale)
+	w.Header().Set("X-Document-Date", doc.DataGU)
+	w.Header().Set("X-Document-Vigenza", doc.Vigenza)
+	w.Header().Set("X-Document-Name", doc.Name)
 
-	w.Header().Set("X-Document-Id", id)
-	w.Header().Set("X-Document-Date", date)
-	w.Header().Set("X-Document-Vigenza", vigenza)
-
-	// Extract and set Title
-	if title == "" {
-		title, _ = converter.ExtractTitle(xmlContent)
-	}
-
-	if title != "" {
-		w.Header().Set("X-Document-Title", title)
-	}
-
-	if format == "markdown" {
-		md, err := converter.ToMarkdown(xmlContent, vigenza)
+	switch format {
+	case "json":
+		jsonBytes, err := doc.ToJSON()
+		if err != nil {
+			http.Error(w, "Conversion failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonBytes)
+	case "markdown":
+		md, err := doc.ToMarkdown()
 		if err != nil {
 			http.Error(w, "Conversion failed: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "text/markdown")
 		w.Write([]byte(md))
+	default:
+		http.Error(w, "Unsupported format: "+format, http.StatusBadRequest)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/xml")
-	w.Write(xmlContent)
 }
 
 // --- User Handlers ---
@@ -414,19 +414,19 @@ func (h *Handler) HandleExport(w http.ResponseWriter, r *http.Request) {
 		format = "pdf"
 	}
 
-	xmlContent, err := h.client.FetchXML(id, date, vigenza)
+	doc, err := h.client.Fetch(id, "", date, vigenza)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	md, err := converter.ToMarkdown(xmlContent, vigenza)
+	md, err := doc.ToMarkdown()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Conversion failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	data, contentType, err := h.exportService.Export(md, format)
+	data, contentType, err := h.exportService.Export(string(md), format)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -441,5 +441,5 @@ func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	w.Header().Set("Access-Control-Expose-Headers", "X-Document-Id, X-Document-Date, X-Document-Title")
+	w.Header().Set("Access-Control-Expose-Headers", "X-Document-Id, X-Document-Date, X-Document-Name")
 }

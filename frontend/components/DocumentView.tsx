@@ -481,7 +481,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
 
     const isAlphaNumeric = (char: string) => {
         // Robust Unicode check for letters and numbers (essential for Italian accents like à, è, ò)
-        return /\p{L}|\p{N}/u.test(char);
+        return /\p{L}|\p{N}|\s/u.test(char);
     };
 
     const cleanMarkdown = (text: string) => {
@@ -699,6 +699,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                         <input type="date" className="bg-transparent text-xs border-none focus:ring-0 p-0 h-6 w-26 font-mono text-muted-foreground focus:text-foreground" value={vigenza} onChange={(e) => setVigenza(e.target.value)} />
                     </div>
                 </div>
+                {/*
                 <div className="bg-muted/50 p-1 rounded-lg flex space-x-2 border items-center">
                     <Button variant={format === 'markdown' ? 'secondary' : 'ghost'} size="sm" className="h-6 text-xs px-3 shadow-none" onClick={() => setFormat('markdown')}>
                         <Eye className="mr-2 h-3.5 w-3.5" /> Reader
@@ -707,6 +708,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                         <FileCode className="mr-2 h-3.5 w-3.5" /> XML
                     </Button>
                 </div>
+                */}
             </div>
 
             <div className="flex-1 flex overflow-hidden gap-4">

@@ -6,14 +6,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/gterranova/normattiva-search/internal/normattiva"
+	"github.com/gterranova/normattiva-search/normattiva"
 )
 
 func main() {
 	client := normattiva.NewClient(30 * time.Second)
 
-	fmt.Println("Searching for 'Costituzione'...")
-	results, err := client.Search("Costituzione")
+	fmt.Println("Searching for '23G00195'...")
+	results, err := client.Search("23G00195")
 	if err != nil {
 		log.Fatalf("Search failed: %v", err)
 	}
@@ -27,7 +27,8 @@ func main() {
 	fmt.Printf("First result: %+v\n", first)
 
 	fmt.Println("Fetching XML for first result...")
-	xmlBytes, err := client.FetchXML(first.CodiceRedazionale, first.DataPubblicazioneGazzetta, "")
+	vigenza := time.Now().Format("2006-01-02")
+	xmlBytes, err := client.FetchXML(first.CodiceRedazionale, first.DataPubblicazioneGazzetta, vigenza)
 	if err != nil {
 		log.Fatalf("FetchXML failed: %v", err)
 	}

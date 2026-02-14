@@ -1,5 +1,8 @@
 PHONY: all
 
+serve:
+	cd backend && go run cmd/server/main.go
+
 all: backend
 
 backend: assets bin

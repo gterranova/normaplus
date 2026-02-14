@@ -229,7 +229,7 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await fetch(`http://localhost:8080/api/document?urn=${encodeURIComponent(urn)}&format=xml`);
+      const response = await fetch(`http://localhost:8080/api/document?urn=${encodeURIComponent(urn)}&format=markdown`);
 
       if (!response.ok) {
         const msg = await response.text();
@@ -238,7 +238,7 @@ export default function Home() {
 
       const newId = response.headers.get('X-Document-Id');
       const newDate = response.headers.get('X-Document-Date');
-      const newTitle = response.headers.get('X-Document-Title');
+      const newTitle = response.headers.get('X-Document-Name');
 
       if (newId && newDate) {
         navigateToDocument({
@@ -280,7 +280,7 @@ export default function Home() {
           <div className="flex items-center space-x-3">
             <Scale className="h-6 w-6 text-primary text-[#1a1a1a] dark:text-[#e0e0e0]" />
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground leading-none text-[#1a1a1a] dark:text-[#e0e0e0]">normattiva<span className='text-amber-600 dark:text-amber-400'>+</span></h1>
+              <h1 className="text-xl font-bold tracking-tight text-foreground leading-none text-[#1a1a1a] dark:text-[#e0e0e0]">norma<span className='text-amber-600 dark:text-amber-400'>+</span></h1>
               {/*<p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-0.5">Legal Search Engine</p>*/}
             </div>
           </div>
