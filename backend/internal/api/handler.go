@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gterranova/normattiva-search/internal/ai"
-	"github.com/gterranova/normattiva-search/internal/export"
-	"github.com/gterranova/normattiva-search/internal/store"
-	"github.com/gterranova/normattiva-search/normattiva"
-	"github.com/gterranova/normattiva-search/normattiva/document"
+	"github.com/gterranova/normaplus/backend/internal/ai"
+	"github.com/gterranova/normaplus/backend/internal/export"
+	"github.com/gterranova/normaplus/backend/internal/store"
+	"github.com/gterranova/normaplus/backend/normattiva"
+	"github.com/gterranova/normaplus/backend/normattiva/document"
 )
 
 type Handler struct {

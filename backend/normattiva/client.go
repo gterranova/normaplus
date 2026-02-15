@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/gterranova/normattiva-search/internal/xmlparser"
-	"github.com/gterranova/normattiva-search/normattiva/document"
+	"github.com/gterranova/normaplus/backend/internal/xmlparser"
+	"github.com/gterranova/normaplus/backend/normattiva/document"
 )
 
 type Client struct {

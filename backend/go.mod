@@ -1,4 +1,4 @@
-module github.com/gterranova/normattiva-search
+module github.com/gterranova/normaplus/backend
 
 go 1.24.5
 

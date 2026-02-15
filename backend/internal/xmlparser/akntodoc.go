@@ -8,7 +8,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/net/html"
 
-	"github.com/gterranova/normattiva-search/normattiva/document"
+	"github.com/gterranova/normaplus/backend/normattiva/document"
 )
 
 func aknToDocument(d *document.Document, xmlBytes []byte) error {

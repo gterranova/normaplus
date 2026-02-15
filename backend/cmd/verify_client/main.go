@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gterranova/normattiva-search/normattiva"
+	"github.com/gterranova/normaplus/backend/normattiva"
 )
 
 func main() {

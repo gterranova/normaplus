@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/gterranova/normattiva-search/normattiva/document"
+	"github.com/gterranova/normaplus/backend/normattiva/document"
 	"golang.org/x/net/html"
 )
 

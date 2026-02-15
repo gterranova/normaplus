@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gterranova/normattiva-search/internal/ai"
-	"github.com/gterranova/normattiva-search/internal/api"
-	"github.com/gterranova/normattiva-search/internal/assets"
-	"github.com/gterranova/normattiva-search/internal/export"
-	"github.com/gterranova/normattiva-search/internal/store"
-	"github.com/gterranova/normattiva-search/normattiva"
+	"github.com/gterranova/normaplus/backend/internal/ai"
+	"github.com/gterranova/normaplus/backend/internal/api"
+	"github.com/gterranova/normaplus/backend/internal/assets"
+	"github.com/gterranova/normaplus/backend/internal/export"
+	"github.com/gterranova/normaplus/backend/internal/store"
+	"github.com/gterranova/normaplus/backend/normattiva"
 )
 
 // corsMiddleware adds CORS headers to allow frontend access

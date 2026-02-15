@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gterranova/normattiva-search/normattiva/document"
+	"github.com/gterranova/normaplus/backend/normattiva/document"
 )
 
 func TestDocumentToMarkdown(t *testing.T) {
