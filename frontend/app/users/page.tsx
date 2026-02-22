@@ -19,7 +19,7 @@ export default function UsersPage() {
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('http://localhost:8080/api/users');
+            const res = await fetch('/api/users');
             if (res.ok) {
                 const data = await res.json();
                 setUsers(data || []);
@@ -36,7 +36,7 @@ export default function UsersPage() {
         if (!newName.trim()) return;
 
         try {
-            const res = await fetch('http://localhost:8080/api/users', {
+            const res = await fetch('/api/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

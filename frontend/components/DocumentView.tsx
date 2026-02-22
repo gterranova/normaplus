@@ -233,7 +233,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
             setLoading(true);
             setError('');
             try {
-                const url = `http://localhost:8080/api/document?id=${encodeURIComponent(docData.codice_redazionale)}&date=${encodeURIComponent(docData.data_pubblicazione_gazzetta)}&format=${format}&vigenza=${vigenza}`;
+                const url = `/api/document?id=${encodeURIComponent(docData.codice_redazionale)}&date=${encodeURIComponent(docData.data_pubblicazione_gazzetta)}&format=${format}&vigenza=${vigenza}`;
                 const response = await fetch(url);
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -416,7 +416,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
                     comment
                 };
 
-            const res = await fetch(`http://localhost:8080/api/annotations`, {
+            const res = await fetch(`/api/annotations`, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -439,7 +439,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
 
     const handleDeleteAnnotation = async (id: number) => {
         try {
-            const res = await fetch(`http://localhost:8080/api/annotations?id=${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/annotations?id=${id}`, { method: 'DELETE' });
             if (res.ok) {
                 onAnnotationAction();
                 setSelection(null);
@@ -451,7 +451,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
         if (!selection) return;
         setAiLoading(true);
         try {
-            const res = await fetch(`http://localhost:8080/api/ai/generate`, {
+            const res = await fetch(`/api/ai/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, text: selection.text })
@@ -689,9 +689,9 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
             <div className="flex justify-center items-center mb-4 px-2 shrink-0 h-10 space-x-3">
                 <div className="flex items-center bg-muted/30 rounded-lg p-1 border border-border/50">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold px-2 border-r border-border/50 mr-1">Export</span>
-                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`http://localhost:8080/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=pdf`)}>PDF</Button>
-                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`http://localhost:8080/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=docx`)}>DOCX</Button>
-                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`http://localhost:8080/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=md`)}>MD</Button>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=pdf`)}>PDF</Button>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=docx`)}>DOCX</Button>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=md`)}>MD</Button>
                 </div>
                 <div className="bg-muted/50 p-1 rounded-lg flex space-x-2 border items-center">
                     <div className="flex items-center px-2 space-x-2">

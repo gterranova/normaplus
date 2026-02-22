@@ -78,7 +78,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const updated = { ...user, ...prefs };
 
         try {
-            const res = await fetch(`http://localhost:8080/api/users`, {
+            const res = await fetch(`/api/users`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updated)

@@ -37,7 +37,7 @@ export default function Home() {
 
   const fetchBookmarks = async (userId: number) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/bookmarks?userId=${userId}`);
+      const res = await fetch(`/api/bookmarks?userId=${userId}`);
       if (res.ok) {
         const data = await res.json();
         const mapped = data?.map((b: any) => ({
@@ -68,7 +68,7 @@ export default function Home() {
   const handleUpdateBookmarkCategory = async (docID: string, category: string) => {
     if (!user) return;
     try {
-      const res = await fetch(`http://localhost:8080/api/bookmarks?userId=${user.id}`, {
+      const res = await fetch(`/api/bookmarks?userId=${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ doc_id: docID, category })
@@ -90,7 +90,7 @@ export default function Home() {
 
   const fetchAnnotations = async (userId: number, docId: string) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/annotations?userId=${userId}&docId=${docId}`);
+      const res = await fetch(`/api/annotations?userId=${userId}&docId=${docId}`);
       if (res.ok) {
         setAnnotations(await res.json());
       }
@@ -111,7 +111,7 @@ export default function Home() {
 
   const handleDeleteAnnotation = async (id: number) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/annotations?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/annotations?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
         setAnnotations(prev => prev.filter(a => a.id !== id));
       }
@@ -134,7 +134,7 @@ export default function Home() {
     if (isBookmarked) {
       // DELETE
       try {
-        const res = await fetch(`http://localhost:8080/api/bookmarks?userId=${user.id}&docId=${doc.codice_redazionale}`, { method: 'DELETE' });
+        const res = await fetch(`/api/bookmarks?userId=${user.id}&docId=${doc.codice_redazionale}`, { method: 'DELETE' });
         if (res.ok) {
           setBookmarks(bookmarks.filter(b => b.codice_redazionale !== doc.codice_redazionale));
         }
@@ -142,7 +142,7 @@ export default function Home() {
     } else {
       // ADD
       try {
-        const res = await fetch(`http://localhost:8080/api/bookmarks?userId=${user.id}`, {
+        const res = await fetch(`/api/bookmarks?userId=${user.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -165,7 +165,7 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await fetch(`http://localhost:8080/api/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
       if (!response.ok) throw new Error('Search failed');
 
       const data = await response.json();
@@ -229,7 +229,7 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await fetch(`http://localhost:8080/api/document?urn=${encodeURIComponent(urn)}&format=markdown`);
+      const response = await fetch(`/api/document?urn=${encodeURIComponent(urn)}&format=markdown`);
 
       if (!response.ok) {
         const msg = await response.text();
