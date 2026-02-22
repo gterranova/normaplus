@@ -20,11 +20,12 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// Allow requests from frontend
 		allowedOrigin := os.Getenv("ALLOWED_ORIGINS")
 		if allowedOrigin == "" {
-			allowedOrigin = "http://localhost:3000"
+			allowedOrigin = "*"
 		}
 		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		//w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Expose-Headers", "X-Document-Id, X-Document-Date, X-Document-Name")
 
 		// Handle preflight requests
 		if r.Method == "OPTIONS" {
@@ -94,7 +95,7 @@ func main() {
 	})
 
 	port := "8080"
-	log.Printf("Server running on http://localhost:%s", port)
+	log.Printf("Server running on http://0.0.0.0:%s", port)
 	if err := http.ListenAndServe("0.0.0.0:"+port, nil); err != nil {
 		log.Fatal(err)
 	}

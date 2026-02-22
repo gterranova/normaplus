@@ -30,7 +30,6 @@ func NewHandler(client *normattiva.Client, store *store.Store, aiService *ai.Ser
 }
 
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
-	enableCors(w)
 	if r.Method == "OPTIONS" {
 		return
 	}
@@ -52,7 +51,6 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
-	enableCors(w)
 	if r.Method == "OPTIONS" {
 		return
 	}
@@ -116,7 +114,6 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 // --- User Handlers ---
 
 func (h *Handler) HandleUsers(w http.ResponseWriter, r *http.Request) {
-	enableCors(w)
 	if r.Method == "OPTIONS" {
 		return
 	}
@@ -171,7 +168,6 @@ func (h *Handler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 // --- Bookmark Handlers ---
 
 func (h *Handler) HandleBookmarks(w http.ResponseWriter, r *http.Request) {
-	enableCors(w)
 	if r.Method == "OPTIONS" {
 		return
 	}
@@ -254,7 +250,6 @@ func (h *Handler) HandleBookmarks(w http.ResponseWriter, r *http.Request) {
 // --- Annotation Handlers ---
 
 func (h *Handler) HandleAnnotations(w http.ResponseWriter, r *http.Request) {
-	enableCors(w)
 	if r.Method == "OPTIONS" {
 		return
 	}
@@ -348,7 +343,6 @@ func (h *Handler) HandleAnnotations(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleAIGenerate(w http.ResponseWriter, r *http.Request) {
-	enableCors(w)
 	if r.Method == "OPTIONS" {
 		return
 	}
@@ -394,7 +388,6 @@ func (h *Handler) HandleAIGenerate(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"result": result})
 }
 func (h *Handler) HandleExport(w http.ResponseWriter, r *http.Request) {
-	enableCors(w)
 	if r.Method == "OPTIONS" {
 		return
 	}
@@ -435,11 +428,4 @@ func (h *Handler) HandleExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"document_%s.%s\"", id, format))
 	w.Write(data)
-}
-
-func enableCors(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Host")
-	w.Header().Set("Access-Control-Expose-Headers", "X-Document-Id, X-Document-Date, X-Document-Name")
 }
