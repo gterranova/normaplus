@@ -2,3 +2,4 @@ backend/*.db
 backend/*.exe
 backend/cache
 backend/internal/assets/dist
+cache

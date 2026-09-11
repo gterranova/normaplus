@@ -7,11 +7,15 @@ import DocumentView from '@/components/DocumentView';
 import RightSidebar from '@/components/RightSidebar';
 import { Scale, XCircle, LogOut, Sun, Moon, User, Settings } from "lucide-react"
 import { useUser } from '@/components/UserProvider';
+import { Source, sourceOf } from '@/lib/source';
 
 export default function Home() {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Which archive the search bar is pointed at. Held here because a search can
+  // be started from outside the bar, and because the bar is rendered twice.
+  const [source, setSource] = useState<Source>('normattiva');
 
   // History State
   const [history, setHistory] = useState<HistoryDef[]>([]);
@@ -45,6 +49,7 @@ export default function Home() {
           title: b.title,
           data_pubblicazione_gazzetta: b.date,
           category: b.category,
+          source: sourceOf(b),
           isPinned: true
         }));
         setBookmarks(mapped || []);
@@ -148,7 +153,8 @@ export default function Home() {
           body: JSON.stringify({
             doc_id: doc.codice_redazionale,
             title: doc.title,
-            date: doc.data_pubblicazione_gazzetta
+            date: doc.data_pubblicazione_gazzetta,
+            source: sourceOf(doc)
           })
         });
         if (res.ok) {
@@ -160,18 +166,24 @@ export default function Home() {
     }
   };
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = async (query: string, source: Source) => {
     setLoading(true);
     setError('');
+    // The control follows the search that is actually running, whoever started
+    // it, rather than the last thing the reader clicked.
+    setSource(source);
 
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-      if (!response.ok) throw new Error('Search failed');
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&source=${source}`);
+      if (!response.ok) throw new Error(await response.text() || 'Search failed');
 
       const data = await response.json();
-      setResults(data || []);
-    } catch (err) {
-      setError('Failed to search. Make sure the backend server is running on port 8080.');
+      // The server stamps every result, but a result that somehow arrives
+      // without one must still be openable, so the source asked for is the
+      // fallback rather than nothing.
+      setResults((data || []).map((r: any) => ({ ...r, source: sourceOf(r) === 'eurlex' ? 'eurlex' : (r.source || source) })));
+    } catch (err: any) {
+      setError(err?.message || 'Failed to search. Make sure the backend server is running on port 8080.');
       setResults([]);
     } finally {
       setLoading(false);
@@ -180,8 +192,11 @@ export default function Home() {
 
   // Helper to add document to unique history
   const navigateToDocument = (newDoc: HistoryDef) => {
-    // Check for duplicate by ID
-    const existingIndex = history.findIndex(h => h.codice_redazionale === newDoc.codice_redazionale);
+    // Identity is the id AND the archive: the two number their documents
+    // independently, so an id alone could collapse two different acts onto one
+    // history entry.
+    const existingIndex = history.findIndex(h =>
+      h.codice_redazionale === newDoc.codice_redazionale && sourceOf(h) === sourceOf(newDoc));
 
     if (existingIndex >= 0) {
       // Already in history, jump to it
@@ -201,6 +216,7 @@ export default function Home() {
       codice_redazionale: doc.codice_redazionale,
       data_pubblicazione_gazzetta: doc.data_pubblicazione_gazzetta,
       title: doc.title,
+      source: sourceOf(doc),
       isPinned: false
     });
   };
@@ -239,12 +255,17 @@ export default function Home() {
       const newId = response.headers.get('X-Document-Id');
       const newDate = response.headers.get('X-Document-Date');
       const newTitle = response.headers.get('X-Document-Name');
+      // The server says which archive answered, so a link followed out of one
+      // document lands in the right one without the client guessing from the
+      // shape of the identifier.
+      const newSource = sourceOf({ source: response.headers.get('X-Document-Source') || undefined });
 
       if (newId && newDate) {
         navigateToDocument({
           codice_redazionale: newId,
           data_pubblicazione_gazzetta: newDate,
           title: newTitle || `Documento ${newId}`,
+          source: newSource,
           isPinned: false
         });
       } else {
@@ -256,6 +277,20 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Opening a directive named by the transposition panel. An EU act has no
+  // gazzetta date, and the slot is left empty rather than filled with something
+  // that would read as one.
+  const handleOpenEU = (celex: string, title: string) => {
+    if (!celex) return;
+    navigateToDocument({
+      codice_redazionale: celex,
+      data_pubblicazione_gazzetta: '',
+      title: title || celex,
+      source: 'eurlex',
+      isPinned: false
+    });
   };
 
   const handleSelectSection = (index: number) => {
@@ -285,7 +320,7 @@ export default function Home() {
             </div>
           </div>
           <div className="flex-1 max-w-xl mx-8 hidden md:block">
-            <SearchBar onSearch={handleSearch} loading={loading} />
+            <SearchBar onSearch={handleSearch} loading={loading} source={source} onSourceChange={setSource} />
           </div>
           <div className="flex items-center space-x-3">
             {user && (
@@ -330,7 +365,7 @@ export default function Home() {
 
         {/* Mobile Search */}
         <div className="md:hidden mb-6 shrink-0">
-          <SearchBar onSearch={handleSearch} loading={loading} />
+          <SearchBar onSearch={handleSearch} loading={loading} source={source} onSourceChange={setSource} />
         </div>
 
         <div className="flex h-full gap-6">
@@ -381,6 +416,9 @@ export default function Home() {
                 onAnnotationClick={handleAnnotationClick}
                 onDeleteAnnotation={handleDeleteAnnotation}
                 activeIndex={activeIndex}
+                docData={selectedDocument}
+                onOpenEU={handleOpenEU}
+                onSearchNormattiva={(q) => handleSearch(q, 'normattiva')}
               />
             </div>
           )}

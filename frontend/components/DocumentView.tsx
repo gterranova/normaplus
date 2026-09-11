@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Eye, FileCode, Loader2, MessageCircle, Sparkles, Languages, Download, X, Trash2 } from "lucide-react"
 import { useUser } from '@/components/UserProvider';
+import { sourceOf } from '@/lib/source';
 
 interface DocumentViewProps {
     docData: any;
@@ -203,6 +204,13 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
     const { user } = useUser();
     const [selection, setSelection] = useState<SelectionState | null>(null);
 
+    const src = sourceOf(docData);
+    const eu = src === 'eurlex';
+    // An EU act is one consolidated text with no vigenza dimension, so the
+    // export URL carries none. Sending an empty one would be the same request;
+    // building it from a control the reader cannot see would not.
+    const exportBase = `/api/export?source=${src}&id=${encodeURIComponent(docData?.codice_redazionale || '')}&date=${encodeURIComponent(docData?.data_pubblicazione_gazzetta || '')}${eu ? '' : `&vigenza=${vigenza}`}`;
+
     const parseTOC = useCallback((md: string) => {
         const toc = [];
         const lines = md.split('\n');
@@ -233,7 +241,9 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
             setLoading(true);
             setError('');
             try {
-                const url = `/api/document?id=${encodeURIComponent(docData.codice_redazionale)}&date=${encodeURIComponent(docData.data_pubblicazione_gazzetta)}&format=${format}&vigenza=${vigenza}`;
+                // The source decides which archive answers; without it a CELEX
+                // is looked up in Normattiva and fails naming the wrong one.
+                const url = `/api/document?source=${src}&id=${encodeURIComponent(docData.codice_redazionale)}&date=${encodeURIComponent(docData.data_pubblicazione_gazzetta || '')}&format=${format}&vigenza=${eu ? '' : vigenza}`;
                 const response = await fetch(url);
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -252,7 +262,7 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
             }
         };
         if (docData?.codice_redazionale) fetchDocument();
-    }, [docData?.codice_redazionale, docData?.data_pubblicazione_gazzetta, format, vigenza, onTOCParsed, parseTOC]);
+    }, [docData?.codice_redazionale, docData?.data_pubblicazione_gazzetta, src, format, vigenza, onTOCParsed, parseTOC]);
 
     // Annotations fetched by parent, but we still need to provide an update trigger
 
@@ -689,16 +699,29 @@ export default function DocumentView({ docData, onNavigate, onTOCParsed, onActiv
             <div className="flex justify-center items-center mb-4 px-2 shrink-0 h-10 space-x-3">
                 <div className="flex items-center bg-muted/30 rounded-lg p-1 border border-border/50">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold px-2 border-r border-border/50 mr-1">Export</span>
-                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=pdf`)}>PDF</Button>
-                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=docx`)}>DOCX</Button>
-                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`/api/export?id=${docData.codice_redazionale}&date=${docData.data_pubblicazione_gazzetta}&vigenza=${vigenza}&format=md`)}>MD</Button>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`${exportBase}&format=pdf`)}>PDF</Button>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`${exportBase}&format=docx`)}>DOCX</Button>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 hover:text-primary transition-colors" onClick={() => window.open(`${exportBase}&format=md`)}>MD</Button>
                 </div>
-                <div className="bg-muted/50 p-1 rounded-lg flex space-x-2 border items-center">
-                    <div className="flex items-center px-2 space-x-2">
-                        <span className="text-[10px] text-muted-foreground uppercase font-medium">Vigenza</span>
-                        <input type="date" className="bg-transparent text-xs border-none focus:ring-0 p-0 h-6 w-26 font-mono text-muted-foreground focus:text-foreground" value={vigenza} onChange={(e) => setVigenza(e.target.value)} />
+                {/* Vigenza is a Normattiva notion: it asks for the text as it stood on a
+                    given day. EUR-Lex publishes one consolidated text per act, so the
+                    control is not shown rather than shown doing nothing — and the act
+                    is named instead, since the two now sit side by side in one reader. */}
+                {eu ? (
+                    <div className="bg-muted/50 p-1 rounded-lg flex space-x-2 border items-center">
+                        <div className="flex items-center px-2 space-x-2">
+                            <span className="text-[10px] text-muted-foreground uppercase font-medium">EUR-Lex</span>
+                            <span className="text-xs font-mono text-muted-foreground">{docData?.codice_redazionale}</span>
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="bg-muted/50 p-1 rounded-lg flex space-x-2 border items-center">
+                        <div className="flex items-center px-2 space-x-2">
+                            <span className="text-[10px] text-muted-foreground uppercase font-medium">Vigenza</span>
+                            <input type="date" className="bg-transparent text-xs border-none focus:ring-0 p-0 h-6 w-26 font-mono text-muted-foreground focus:text-foreground" value={vigenza} onChange={(e) => setVigenza(e.target.value)} />
+                        </div>
+                    </div>
+                )}
                 {/*
                 <div className="bg-muted/50 p-1 rounded-lg flex space-x-2 border items-center">
                     <Button variant={format === 'markdown' ? 'secondary' : 'ghost'} size="sm" className="h-6 text-xs px-3 shadow-none" onClick={() => setFormat('markdown')}>

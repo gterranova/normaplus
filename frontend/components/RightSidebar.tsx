@@ -1,11 +1,12 @@
 'use client';
 
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { List, MessageCircle, PanelRightOpen, Trash2, PanelRightClose } from "lucide-react"
+import { List, MessageCircle, PanelRightOpen, Trash2, PanelRightClose, Link2 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import TOCPanel from "./TOCPanel";
 import AnnotationPanel from "./AnnotationPanel";
+import RecepimentoPanel from "./RecepimentoPanel";
 
 interface DocumentSidebarProps {
     toc: any[];
@@ -14,6 +15,9 @@ interface DocumentSidebarProps {
     onAnnotationClick: (id: number) => void;
     onDeleteAnnotation: (id: number) => void;
     activeIndex?: number;
+    docData: any;
+    onOpenEU: (celex: string, title: string) => void;
+    onSearchNormattiva: (query: string) => void;
 }
 
 export default function DocumentSidebar({
@@ -22,9 +26,12 @@ export default function DocumentSidebar({
     onSelectSection,
     onAnnotationClick,
     onDeleteAnnotation,
-    activeIndex
+    activeIndex,
+    docData,
+    onOpenEU,
+    onSearchNormattiva
 }: DocumentSidebarProps) {
-    const [activeTab, setActiveTab] = useState<'toc' | 'notes'>('toc');
+    const [activeTab, setActiveTab] = useState<'toc' | 'notes' | 'eu'>('toc');
     const [collapsed, setCollapsed] = useState(false);
 
     return (
@@ -55,6 +62,18 @@ export default function DocumentSidebar({
                                 <MessageCircle className="h-3 w-3 mr-1.5" />
                                 Notes ({annotations?.length || 0})
                             </button>
+                            {/* A tool about the open document, so it belongs beside the
+                                contents and the notes rather than in the search column —
+                                and it is only queried once the tab is selected, because
+                                each lookup is a slow SPARQL query against CELLAR. */}
+                            <button
+                                className={`flex items-center text-sm font-semibold transition-colors pb-1 border-b-2 ${activeTab === 'eu' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                                onClick={() => setActiveTab('eu')}
+                                title="Transposition between EU and national law"
+                            >
+                                <Link2 className="h-3 w-3 mr-1.5" />
+                                EU
+                            </button>
                         </div>
                     </div>
                 )}
@@ -62,10 +81,14 @@ export default function DocumentSidebar({
 
             {!collapsed && (
                 <ScrollArea className="flex-1">
-                    {activeTab === 'toc' ? (
+                    {activeTab === 'toc' && (
                         <TOCPanel toc={toc} onSelectSection={onSelectSection} activeIndex={activeIndex} />
-                    ) : (
+                    )}
+                    {activeTab === 'notes' && (
                         <AnnotationPanel annotations={annotations} onAnnotationClick={onAnnotationClick} onDeleteAnnotation={onDeleteAnnotation} />
+                    )}
+                    {activeTab === 'eu' && (
+                        <RecepimentoPanel docData={docData} onOpenEU={onOpenEU} onSearchNormattiva={onSearchNormattiva} />
                     )}
                 </ScrollArea>
             )}

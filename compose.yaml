@@ -1,0 +1,12 @@
+name: normaplus
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports: 
+      - 8080:8080
+    volumes:
+      - ./cache:/app/cache
+    restart: always
+    

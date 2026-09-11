@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gterranova/normaplus/backend/eurlex"
 	"github.com/gterranova/normaplus/backend/internal/ai"
 	"github.com/gterranova/normaplus/backend/internal/export"
 	"github.com/gterranova/normaplus/backend/internal/store"
@@ -15,14 +16,16 @@ import (
 
 type Handler struct {
 	client        *normattiva.Client
+	euClient      *eurlex.Client
 	store         *store.Store
 	aiService     *ai.Service
 	exportService *export.Service
 }
 
-func NewHandler(client *normattiva.Client, store *store.Store, aiService *ai.Service, exportService *export.Service) *Handler {
+func NewHandler(client *normattiva.Client, euClient *eurlex.Client, store *store.Store, aiService *ai.Service, exportService *export.Service) *Handler {
 	return &Handler{
 		client:        client,
+		euClient:      euClient,
 		store:         store,
 		aiService:     aiService,
 		exportService: exportService,
@@ -40,14 +43,50 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	src, ok := sorgente(r)
+	if !ok {
+		http.Error(w, "Parametro 'source' non valido: usare 'normattiva' oppure 'eurlex'", http.StatusBadRequest)
+		return
+	}
+	if src == "eurlex" {
+		h.searchEU(w, r, query)
+		return
+	}
+
 	results, err := h.client.Search(query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// Stamped on every result so the client can tell an Italian act from an EU
+	// one without inspecting the identifier — the two live side by side in the
+	// history, in bookmarks and in annotations.
+	out := make([]searchResult, 0, len(results))
+	for _, r := range results {
+		out = append(out, searchResult{
+			Title:                     r.Title,
+			DataPubblicazioneGazzetta: r.DataPubblicazioneGazzetta,
+			CodiceRedazionale:         r.CodiceRedazionale,
+			Link:                      r.Link,
+			Source:                    "normattiva",
+		})
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(results)
+	json.NewEncoder(w).Encode(out)
+}
+
+// searchResult is normattiva.DocumentMetadata plus the source.
+//
+// It exists so both sources answer in one shape: the frontend keys history,
+// bookmarks and annotations on codice_redazionale, and the CELEX takes that slot
+// for an EU act — so `source` is the only thing that has to travel alongside.
+type searchResult struct {
+	Title                     string `json:"title"`
+	DataPubblicazioneGazzetta string `json:"data_pubblicazione_gazzetta"`
+	CodiceRedazionale         string `json:"codice_redazionale"`
+	Link                      string `json:"link,omitempty"`
+	Source                    string `json:"source"`
 }
 
 func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
@@ -63,22 +102,41 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	format := query.Get("format")
 	name := ""
 
+	src, ok := sorgente(r)
+	if !ok {
+		http.Error(w, "Parametro 'source' non valido: usare 'normattiva' oppure 'eurlex'", http.StatusBadRequest)
+		return
+	}
+
 	var doc *document.Document
 	var err error
 
-	if urn != "" {
+	switch {
+	case src == "eurlex":
+		// An EU act has no vigenza and no URN: its identity is the CELEX, which
+		// travels in `id` exactly as a codice redazionale does.
+		if id == "" {
+			http.Error(w, "Parametro 'id' mancante: per source=eurlex indicare il numero CELEX (es. 32022L2555)", http.StatusBadRequest)
+			return
+		}
+		doc, err = h.euClient.Fetch(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+	case urn != "":
 		doc, err = h.client.FetchByURN(urn)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	} else if id != "" {
+	case id != "":
 		doc, err = h.client.Fetch(id, name, date, vigenza)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	} else {
+	default:
 		http.Error(w, "Missing/wrong 'id' or 'urn' parameters", http.StatusBadRequest)
 		return
 	}
@@ -87,6 +145,10 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Document-Date", doc.DataGU)
 	w.Header().Set("X-Document-Vigenza", doc.Vigenza)
 	w.Header().Set("X-Document-Name", doc.Name)
+	// The client navigates from a link inside a document and has to know which
+	// source to ask next; without this it would have to guess from the shape of
+	// the identifier.
+	w.Header().Set("X-Document-Source", src)
 
 	switch format {
 	case "json":
@@ -199,12 +261,15 @@ func (h *Handler) HandleBookmarks(w http.ResponseWriter, r *http.Request) {
 			DocID string `json:"doc_id"`
 			Title string `json:"title"`
 			Date  string `json:"date"`
+			// Absent means normattiva, so a client written before EUR-Lex
+			// existed goes on bookmarking Italian acts unchanged.
+			Source string `json:"source"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "Invalid body", http.StatusBadRequest)
 			return
 		}
-		bm, err := h.store.CreateBookmark(ctx, userID, body.DocID, body.Title, body.Date)
+		bm, err := h.store.CreateBookmark(ctx, userID, body.DocID, body.Title, body.Date, body.Source)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -398,8 +463,9 @@ func (h *Handler) HandleExport(w http.ResponseWriter, r *http.Request) {
 	vigenza := query.Get("vigenza")
 	format := query.Get("format") // pdf, docx, html, md
 
-	if id == "" || date == "" {
-		http.Error(w, "Missing id/date", http.StatusBadRequest)
+	src, ok := sorgente(r)
+	if !ok {
+		http.Error(w, "Parametro 'source' non valido: usare 'normattiva' oppure 'eurlex'", http.StatusBadRequest)
 		return
 	}
 
@@ -407,10 +473,34 @@ func (h *Handler) HandleExport(w http.ResponseWriter, r *http.Request) {
 		format = "pdf"
 	}
 
-	doc, err := h.client.Fetch(id, "", date, vigenza)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// An EU act is identified by its CELEX alone: it has no gazzetta date and no
+	// vigenza, so requiring them here would make every export of one fail — and
+	// fail as a Normattiva lookup, which names the wrong archive in the error.
+	var (
+		doc *document.Document
+		err error
+	)
+	switch {
+	case src == "eurlex":
+		if id == "" {
+			http.Error(w, "Parametro 'id' mancante: per source=eurlex indicare il numero CELEX (es. 32022L2555)", http.StatusBadRequest)
+			return
+		}
+		doc, err = h.euClient.Fetch(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+	default:
+		if id == "" || date == "" {
+			http.Error(w, "Missing id/date", http.StatusBadRequest)
+			return
+		}
+		doc, err = h.client.Fetch(id, "", date, vigenza)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	md, err := doc.ToMarkdown()

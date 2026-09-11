@@ -1,6 +1,7 @@
 'use client';
 
 import { Pin, X } from "lucide-react"
+import { SOURCE_LABEL, isEU, sourceOf } from "@/lib/source"
 
 interface HistoryPanelProps {
     history: any[];
@@ -41,7 +42,16 @@ export default function HistoryPanel({
                                     <p className={`line-clamp-2 ${pinned ? 'font-medium text-amber-700 dark:text-amber-400' : ''}`}>
                                         {doc.title || "Document"}
                                     </p>
-                                    <p className="text-xs opacity-60 font-mono mt-0.5">{doc.codice_redazionale}</p>
+                                    <p className="text-xs opacity-60 mt-0.5 flex items-center gap-1.5">
+                                        {/* Named only for EU acts: Normattiva is the ordinary case, and a
+                                            badge on every row would say nothing while costing a line. */}
+                                        {isEU(doc) && (
+                                            <span className="shrink-0 font-semibold uppercase text-[9px] tracking-wide px-1 rounded border border-current/40">
+                                                {SOURCE_LABEL[sourceOf(doc)]}
+                                            </span>
+                                        )}
+                                        <span className="font-mono truncate">{doc.codice_redazionale}</span>
+                                    </p>
                                 </div>
                                 <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button

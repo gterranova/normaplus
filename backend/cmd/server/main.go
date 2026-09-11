@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gterranova/normaplus/backend/eurlex"
 	"github.com/gterranova/normaplus/backend/internal/ai"
 	"github.com/gterranova/normaplus/backend/internal/api"
 	"github.com/gterranova/normaplus/backend/internal/assets"
@@ -25,7 +26,12 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, OPTIONS")
 		//w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.Header().Set("Access-Control-Expose-Headers", "X-Document-Id, X-Document-Date, X-Document-Name")
+		// A header the browser cannot read is a header that was not sent, as far
+		// as the client is concerned: the reader follows a link by asking which
+		// archive answered, so leaving X-Document-Source out makes every such link
+		// resolve as Italian legislation when the frontend is served from another
+		// origin. X-Document-Vigenza was already in that state.
+		w.Header().Set("Access-Control-Expose-Headers", "X-Document-Id, X-Document-Date, X-Document-Name, X-Document-Vigenza, X-Document-Source, X-Search-Scope")
 
 		// Handle preflight requests
 		if r.Method == "OPTIONS" {
@@ -52,7 +58,11 @@ func main() {
 	exportService := export.NewService()
 
 	client := normattiva.NewClient(30 * time.Second)
-	handler := api.NewHandler(client, store, aiService, exportService)
+	// The EU client gets a far longer timeout: a title search on CELLAR is a
+	// scan over every Italian title in the corpus, measured at about twenty
+	// seconds, and it has no index to serve it from.
+	euClient := eurlex.NewClient(120 * time.Second)
+	handler := api.NewHandler(client, euClient, store, aiService, exportService)
 
 	http.HandleFunc("/api/search", corsMiddleware(handler.Search))
 	http.HandleFunc("/api/document", corsMiddleware(handler.GetDocument))
@@ -63,6 +73,7 @@ func main() {
 	http.HandleFunc("/api/annotations", corsMiddleware(handler.HandleAnnotations))
 	http.HandleFunc("/api/ai/generate", corsMiddleware(handler.HandleAIGenerate))
 	http.HandleFunc("/api/export", corsMiddleware(handler.HandleExport))
+	http.HandleFunc("/api/eu/recepimento", corsMiddleware(handler.HandleRecepimento))
 
 	// Serve static files from the embedded filesystem
 	staticFS := assets.GetFileSystem()

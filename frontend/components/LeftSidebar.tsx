@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import ResultList from "./ResultList";
 import HistoryPanel from "./HistoryPanel";
 import BookmarksPanel from "./BookmarksPanel";
+import { Source, sourceOf } from "@/lib/source";
 
 export interface Document {
     codice_redazionale: string;
@@ -15,6 +16,9 @@ export interface Document {
     title: string;
     isPinned?: boolean;
     category?: string;
+    // Which archive to ask for this document. Absent means normattiva, so every
+    // record stored before EUR-Lex existed keeps resolving as it did.
+    source?: Source;
 }
 
 interface SidebarProps {
@@ -71,7 +75,9 @@ export default function LeftSidebar({
     };
 
     const isBookmarked = (doc: Document) => {
-        return bookmarks.some(b => b.codice_redazionale === doc.codice_redazionale);
+        // Both halves of the address: the two archives number their documents
+        // independently, so an id alone is not an identity.
+        return bookmarks.some(b => b.codice_redazionale === doc.codice_redazionale && sourceOf(b) === sourceOf(doc));
     };
 
     return (

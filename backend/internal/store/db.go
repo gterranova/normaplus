@@ -88,6 +88,9 @@ func (s *Store) migrate() error {
 		{"users", "ALTER TABLE users ADD COLUMN mode TEXT DEFAULT 'light'"},
 		{"users", "ALTER TABLE users ADD COLUMN ui_state TEXT DEFAULT '{}'"},
 		{"bookmarks", "ALTER TABLE bookmarks ADD COLUMN category TEXT DEFAULT 'General'"},
+		// Every row that predates this column is Italian legislation, which is
+		// exactly what the default says — so no backfill is needed.
+		{"bookmarks", "ALTER TABLE bookmarks ADD COLUMN source TEXT DEFAULT 'normattiva'"},
 		{"annotations", "ALTER TABLE annotations ADD COLUMN location_id TEXT"},
 		{"annotations", "ALTER TABLE annotations ADD COLUMN selection_offset INTEGER DEFAULT 0"},
 		{"annotations", "ALTER TABLE annotations ADD COLUMN prefix TEXT DEFAULT ''"},
